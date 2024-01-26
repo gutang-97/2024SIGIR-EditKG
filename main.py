@@ -34,8 +34,7 @@ from utils.Speed_data_loader_add_kg import load_data
 from sklearn.metrics.pairwise import cosine_similarity
 
 from modules.KGR_model import KGR
-# from modules.Speed_KRDN_cxks import Recommender
-from modules.Speed_KRDN_cxks_v3 import Recommender
+from modules.EDKG import Recommender
 from modules.pcgrad import PCGrad
 
 from utils.evaluate import test
