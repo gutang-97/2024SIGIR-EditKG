@@ -139,8 +139,6 @@ class GraphConv(nn.Module):
         self.n_edge_type = two_hpo_kg[:,1]
         
     def _edge_sampling(self, edge_index, edge_type, rate=0.5):
-        # edge_index: [2, -1]
-        # edge_type: [-1]
         n_edges = edge_index.shape[1]
         random_indices = np.random.choice(n_edges, size=int(n_edges * rate), replace=False)
         return edge_index[:, random_indices], edge_type[random_indices]
@@ -171,8 +169,6 @@ class GraphConv(nn.Module):
         )  # ~Gumbel(0,1)
         
         gumbels = (action_prob +  gumbels)/tau
-
-        # y_soft = gumbels.softmax(dim)
         y_soft = torch.sigmoid(gumbels)
         y_hard = (y_soft > 0.1).float()
 
@@ -198,8 +194,6 @@ class GraphConv(nn.Module):
         else:
             action_soft = torch.sigmoid(action_prob)
             action_hard = (action_soft > 0.1).float()
-
-        print("keep rate: ",action_hard.sum()/action_hard.shape[0])
         return action_soft, action_hard
 
     def KG_forward(self, entity_emb, edge_index, edge_type,
@@ -298,13 +292,10 @@ class GraphConv(nn.Module):
     
     def forward(self, all_embed, all_embed_cf, edge_index, edge_type, n_edge_index, n_edge_type, 
                 interact_mat, mess_dropout=True, node_dropout=False,gumbel=True):
-        #KG_DropEdge_para:(3,558310) (由0，1组成)
         """node dropout"""
-
         if node_dropout:
             interact_mat = self._sparse_dropout(interact_mat, self.node_dropout_rate)          
-                                                                   
-                                                                   
+            
         mat_row = interact_mat._indices()[0, :]  
         mat_col = interact_mat._indices()[1, :]  
         mat_val = interact_mat._values()         
@@ -330,12 +321,8 @@ class GraphConv(nn.Module):
         bc_n_kg_drop_soft = N_KG_drop_soft[mmd_batch]
         bc_kgc_soft = self.kgc(kg_bc_trip,eval=True,cf_train=True)
         bc_kgc_hard = (bc_kgc_soft > 0.1).float().sum()
-        print("bc_kgc_hard",bc_kgc_hard)
-        # print(bc_n_kg_drop_soft[:100])
         bc_kgc_soft = bc_kgc_soft.detach()
         mmd_loss = self._cal_mmd(bc_kgc_soft, bc_n_kg_drop_soft) 
-        print("mmd loss: ",mmd_loss.item())
-        
         entity_emb_res = entity_emb[:self.n_items]
         n_entity_emb_res = n_entity_emb[:self.n_items]
         for i in range(len(self.convs)):
@@ -355,22 +342,6 @@ class GraphConv(nn.Module):
             user_embeds,item_embeds = self.convs[i](user_embeds, item_embeds,self.interact_mat)
             item_embed_res = item_embed_res + F.normalize(item_embeds)
             user_embed_res = user_embed_res + F.normalize(user_embeds)
-            # user_embeds = F.normalize(user_embeds)
-            # item_embeds = F.normalize(item_embeds)
-            # user_embed_res = user_embed_res + F.dropout(user_embeds,p=0.0,training=self.training)
-            # item_embed_res = item_embed_res + F.dropout(item_embeds,p=0.0,training=self.training)
-        
-        # user_agg_cf = torch.sparse.mm(user_item_mat, item_embed)
-        # item_agg_cf =  torch.sparse.mm(item_user_mat, user_embed)
-        # user_agg_kg = torch.sparse.mm(user_item_mat, entity_emb_res)
-        # user_agg_nkg = torch.sparse.mm(user_item_mat, n_entity_emb_res)
-        
-        
-        # user_emb_all_res = [user_embed_res, user_agg_kg, user_agg_nkg]
-        # item_emb_all_res = [item_embed_res, entity_emb_res, n_entity_emb_res]
-        # user_emb_all_res = torch.cat([user_embed + user_agg_cf,user_agg_kg,user_agg_nkg],dim=-1)
-        # item_emb_all_res = torch.cat([item_embed,entity_emb_res,n_entity_emb_res],dim=-1)
-        # item_emb_all_res = item_embed
         
         bce_loss = 0
         return user_embed_res, item_embed_res, KG_drop_hard, mmd_loss
