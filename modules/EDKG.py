@@ -85,9 +85,9 @@ class Aggregator(nn.Module):
 
     def forward(self, user_emb, item_emb,interact_mat):
         
-        mat_row = interact_mat._indices()[0, :]  #[689974], interact_mat稀疏矩阵(114737,89196)的行索引
-        mat_col = interact_mat._indices()[1, :]  #[689974], interact_mat稀疏矩阵(114737,89196)的列索引
-        mat_val = interact_mat._values()         #[689974]，interact_mat稀疏矩阵(114737,89196)中的元素
+        mat_row = interact_mat._indices()[0, :] 
+        mat_col = interact_mat._indices()[1, :]  
+        mat_val = interact_mat._values()         
  
         user_item_mat = torch.sparse.FloatTensor(torch.cat([mat_row, mat_col]).view(2, -1), mat_val,
                                                  size=[self.n_users, self.n_items])   #(114737,30040) --> (n_users,n_items)
@@ -151,19 +151,18 @@ class GraphConv(nn.Module):
         return m
 
     def _sparse_dropout(self, x, rate=0.5):
-        noise_shape = x._nnz()                                       #noise_shape：interact_mat:(114737,89196)中的非零元素的数量，为1380510
-
+        noise_shape = x._nnz()                                       
         random_tensor = rate
-        random_tensor += torch.rand(noise_shape).to(x.device)        #随机生成与noise_shape数量一样的tensor:(1380510,)，再加上random_tensor(0.5)
-        dropout_mask = torch.floor(random_tensor).type(torch.bool)   #(1380510,), random_tensor中大于1的部分mask为True，小于1的部分mask为False.
-        i = x._indices()                                             #(2,1380510)-->非0元素的行和列
-        v = x._values()                                              #(1380510,) -->非0元素的值
+        random_tensor += torch.rand(noise_shape).to(x.device)        
+        dropout_mask = torch.floor(random_tensor).type(torch.bool)   
+        i = x._indices()                                             
+        v = x._values()                                              
 
-        i = i[:, dropout_mask]                                       #(2,689974), 丢掉了(2,1380510)中mask为Fasle的部分。
-        v = v[dropout_mask]                                          #(689974,), 丢掉了(1380510,)中mask为Fasle的部分。
+        i = i[:, dropout_mask]                                       
+        v = v[dropout_mask]                                         
 
-        out = torch.sparse.FloatTensor(i, v, x.shape).to(x.device)   #(114737,89196)，形状与interact_mat一样，但是矩阵里面的非0元素少了0.5倍。
-        # return out * (1. / (1 - rate))                               #对每个元素放大2倍，比如某一行有4个数，都是0.25，变为2个数后每个数自然要变为0.5。
+        out = torch.sparse.FloatTensor(i, v, x.shape).to(x.device)   
+        # return out * (1. / (1 - rate))                              
         return out
 
     def Gumbel_process(self,action_prob, tau=1, dim=-1, hard=True):
@@ -303,12 +302,12 @@ class GraphConv(nn.Module):
         """node dropout"""
 
         if node_dropout:
-            interact_mat = self._sparse_dropout(interact_mat, self.node_dropout_rate)          #(690255,2);(690255,) 
-                                                                   #(89196,64)
+            interact_mat = self._sparse_dropout(interact_mat, self.node_dropout_rate)          
                                                                    
-        mat_row = interact_mat._indices()[0, :]  #[689974], interact_mat稀疏矩阵(114737,89196)的行索引
-        mat_col = interact_mat._indices()[1, :]  #[689974], interact_mat稀疏矩阵(114737,89196)的列索引
-        mat_val = interact_mat._values()         #[689974]，interact_mat稀疏矩阵(114737,89196)中的元素
+                                                                   
+        mat_row = interact_mat._indices()[0, :]  
+        mat_col = interact_mat._indices()[1, :]  
+        mat_val = interact_mat._values()         
 
         user_item_mat = torch.sparse.FloatTensor(torch.cat([mat_row, mat_col]).view(2, -1), mat_val,
                                                  size=[self.n_users, self.n_items])   #(114737,30040) --> (n_users,n_items)
@@ -326,7 +325,7 @@ class GraphConv(nn.Module):
 
         '''calculate mmd loss'''
         kg_trip = torch.cat([self.n_edge_index[0].unsqueeze(0),self.n_edge_type.unsqueeze(0),self.n_edge_index[1].unsqueeze(0)],dim=0).transpose(1,0)
-        mmd_batch = torch.randint(low=0,high=len(kg_trip),size=(int(4096 * 2),)).to(kg_trip.device)   ##MIND:4096 * 2 others:4096
+        mmd_batch = torch.randint(low=0,high=len(kg_trip),size=(int(4096 * 2),)).to(kg_trip.device)   
         kg_bc_trip = kg_trip[mmd_batch]
         bc_n_kg_drop_soft = N_KG_drop_soft[mmd_batch]
         bc_kgc_soft = self.kgc(kg_bc_trip,eval=True,cf_train=True)
@@ -430,7 +429,7 @@ class Recommender(nn.Module):
         # self.all_embed_cf = initializer(torch.empty(self.n_users + self.n_items, self.emb_size))
         # self.all_embed_cf = nn.Parameter(self.all_embed_cf)
         self.all_embed_cf = None
-        self.interact_mat = self._convert_sp_mat_to_sp_tensor(self.ui_sp_graph).to(self.device)   #sparse_tensor: (114737,89196) user-item的交互矩阵，行是user,列是item,只有前30040(n_items)有值。
+        self.interact_mat = self._convert_sp_mat_to_sp_tensor(self.ui_sp_graph).to(self.device)   
 
     def _convert_sp_mat_to_sp_tensor(self, X):
         coo = X.tocoo()
@@ -530,8 +529,8 @@ class Recommender(nn.Module):
 
     def forward(self,batch=None,mode="cf"):
         if mode == "cf":
-            user = batch['users']                                                                          #(4096,)
-            pos_item = batch['pos_items']                                                                  #(4096,)
+            user = batch['users']                                                                          
+            pos_item = batch['pos_items']                                                                  
 
             loss_network = self.gcn_forword(user, pos_item)
             return loss_network
