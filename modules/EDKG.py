@@ -123,10 +123,10 @@ class GraphConv(nn.Module):
         self.N_Select_agent = SelectAgent(channel * 3 ,1)
 
         self.bce_loss = nn.CrossEntropyLoss(label_smoothing=0.2)
-        relation_weight = nn.init.xavier_uniform_(torch.empty(n_relations, channel))  # not include interact
-        self.relation_weight = nn.Parameter(relation_weight)  # [n_relations - 1, in_channel]
-        n_relation_weight = nn.init.xavier_uniform_(torch.empty(n_relations, channel))  # not include interact
-        self.n_relation_weight = nn.Parameter(n_relation_weight)  # [n_relations - 1, in_channel]
+        relation_weight = nn.init.xavier_uniform_(torch.empty(n_relations, channel))  
+        self.relation_weight = nn.Parameter(relation_weight)  
+        n_relation_weight = nn.init.xavier_uniform_(torch.empty(n_relations, channel))  
+        self.n_relation_weight = nn.Parameter(n_relation_weight)  
         
         self.kgc = KGC(n_items=self.n_items,num_ent=self.n_entity,num_rel=self.n_relations,dim=channel)
         for i in range(n_hops):
@@ -453,9 +453,9 @@ class Recommender(nn.Module):
                          mess_dropout_rate=self.mess_dropout_rate)
 
     def _get_edges(self, graph):
-        graph_tensor = torch.tensor(list(graph.edges))  # [-1, 3]
-        index = graph_tensor[:, :-1]  # [-1, 2]
-        type = graph_tensor[:, -1]  # [-1, 1]
+        graph_tensor = torch.tensor(list(graph.edges))  
+        index = graph_tensor[:, :-1] 
+        type = graph_tensor[:, -1] 
         return index.t().long().to(self.device), type.long().to(self.device)
 
 
@@ -508,12 +508,7 @@ class Recommender(nn.Module):
                                                             mess_dropout=self.mess_dropout,
                                                             node_dropout=self.node_dropout,
                                                             gumbel = True )
-        # user_kg = user_all_emb[1]
-        # user_n_kg = user_all_emb[2]
-        # cl_loss = self._contrastive_loss(user_kg,user_n_kg,user,tau=1,small_batch = 256)
-        # print("cl loss: ",cl_loss.item())
-        # user_all_emb = torch.cat(user_all_emb,dim=-1)
-        # item_all_emb = torch.cat(item_all_emb,dim=-1)
+
         user_emb = user_all_emb[user]
         score = torch.matmul(user_emb, item_all_emb.transpose(1,0))
         cet_loss = self.cet_loss(score,pos_item)
@@ -553,9 +548,7 @@ class Recommender(nn.Module):
                                                             mess_dropout=False,
                                                             node_dropout=False,
                                                             gumbel = False )
-        # user_all_emb = torch.cat(user_all_emb,dim=-1)
-        # item_all_emb = torch.cat(item_all_emb,dim=-1)
-        
+
         item_pred_emb = item_all_emb 
         user_pred_emb = user_all_emb 
         if for_kgc:
