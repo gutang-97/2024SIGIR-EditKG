@@ -39,7 +39,6 @@ class PCGrad():
         input:
         - objectives: a list of objectives
         '''
-
         grads, shapes, has_grads = self._pack_grad(objectives)
         pc_grad = self._project_conflicting(grads, has_grads)
         pc_grad = self._unflatten_grad(pc_grad, shapes[0])
@@ -53,7 +52,6 @@ class PCGrad():
         main_task_grad = pc_grad[1]
         am_grad_smi = torch.dot(aux_task_grad, main_task_grad)
         if am_grad_smi < 0:
-            print("pcg_grad.....")
             aux_task_grad -= (am_grad_smi) * main_task_grad / (main_task_grad.norm()**2)
         new_pc_grad = [aux_task_grad, main_task_grad]
 
@@ -111,7 +109,6 @@ class PCGrad():
         - shape: a list of the shape of the parameters
         - has_grad: a list of mask represent whether the parameter has gradient
         '''
-
         grads, shapes, has_grads = [], [], []
         for obj in objectives:
             self._optim.zero_grad(set_to_none=True)
