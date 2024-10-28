@@ -152,11 +152,11 @@ def build_graph(train_data, triplets):
     ckg_graph = nx.MultiDiGraph()
     rd = defaultdict(list)
 
-    print("Begin to load interaction triples ...")
+
     for u_id, i_id in tqdm(train_data, ascii=True):
         rd[0].append([u_id, i_id])
 
-    print("\nBegin to load knowledge graph triples ...")
+
     for h_id, r_id, t_id in tqdm(triplets, ascii=True):
         ckg_graph.add_edge(h_id, t_id, key=r_id)
         rd[r_id].append([h_id, t_id])
@@ -189,19 +189,19 @@ def build_sparse_graph(relation_dict):
         return norm_adj.tocoo()
 
     adj_mat_list = []
-    print("Begin to build sparse relation matrix ...")
-    for r_id in tqdm(relation_dict.keys()):                                                    #relation_dict 一共103种关系
+
+    for r_id in tqdm(relation_dict.keys()):                                                    
         np_mat = np.array(relation_dict[r_id])
-        if r_id == 0:                                                                          #是user-item的交互
+        if r_id == 0:                                                                          
             cf = np_mat.copy()
-            cf[:, 1] = cf[:, 1] + n_users  # [0, n_items) -> [n_users, n_users+n_items)        #因为user和item都是从0开始编码，为了能够在稀疏矩阵中存储，所以item在矩阵表示为列，所以列标从n_user开始
+            cf[:, 1] = cf[:, 1] + n_users  # [0, n_items) -> [n_users, n_users+n_items)        
             vals = [1.] * len(cf)
-            adj = sp.coo_matrix((vals, (cf[:, 0], cf[:, 1])), shape=(n_nodes, n_nodes))        #n_nodes：203933， 但是这个adj中只有前(n_users+n_items) * (n_users+n_items)--> (114737+30040=144777) * (114737+30040=144777)中有值
+            adj = sp.coo_matrix((vals, (cf[:, 0], cf[:, 1])), shape=(n_nodes, n_nodes))        
         else:
             vals = [1.] * len(np_mat)
-            adj = sp.coo_matrix((vals, (np_mat[:, 0], np_mat[:, 1])), shape=(n_nodes, n_nodes)) #由于np_map里都是entity,所以这个里面的np_mat最大编码数为:0-->n_entity=89196, 所以这个adj只有前 89196行*89196列有值。
+            adj = sp.coo_matrix((vals, (np_mat[:, 0], np_mat[:, 1])), shape=(n_nodes, n_nodes)) 
         adj_mat_list.append(adj)
-    ui_mat_list = adj_mat_list[0].tocsr()[:n_users, n_users:n_users + n_items].tocoo()                            #变成了n_user * n_entities大小了:(114737, 89196) 但是只有前(n_user,n_items)-->(114737,30040)有值.
+    ui_mat_list = adj_mat_list[0].tocsr()[:n_users, n_users:n_users + n_items].tocoo()                           
     # return _si_norm_lap(ui_mat_list), adj_mat_list
     return ui_mat_list, adj_mat_list
 
@@ -209,7 +209,6 @@ def build_kg_set(triplets):
     if os.path.exists("item_rel_mask_rev.pkl"):
         item_rel_mask_rev = pkl.load(open("item_rel_mask_rev.pkl","rb"))
     else:
-        print("generating item rel mask mat...")
         item_rel_mask = np.zeros((n_items,n_relations))
         for item in tqdm(range(n_items)):
             item_rel = triplets[triplets[:,0]==item][:,1]
@@ -217,13 +216,11 @@ def build_kg_set(triplets):
             item_rel_map = item_rel_mask[item]
             item_rel_map[item_rel] = 1
             if sum(item_rel_map) == 0:
-                print(item)
-                print(item_rel)
+                pass
             item_rel_mask[item] = item_rel_map
             # item_rel_set[item] = item_rel.tolist()
         item_rel_mask_rev = (~(item_rel_mask>0)).astype("float")
         item_rel_mask_rev[:,0] = 0
-        print(item_rel_mask_rev.shape)
         pkl.dump(item_rel_mask_rev,open("item_rel_mask_rev.pkl","wb"))
     return item_rel_mask_rev
 
@@ -240,36 +237,30 @@ def static_kg(triplets):
             cnt_both_in+=1
         else:
             cnt_one_in += 1
-    print("cnt_both_non: ",cnt_both_non/len(head))
-    print("cnt_both_in: ",cnt_both_in/len(head))
-    print("cnt_one_in: ",cnt_one_in/len(head))
     # cnt_item = 0
     # for item in tqdm(range(n_entities)):
     #     if item not in head:
     #         cnt_item+=1
-    # print("cnt_item: ",cnt_item)
-    # print("rate: ",cnt/len(head))
+
 def load_data(model_args):
     global args
     args = model_args
     directory = args.data_path + args.dataset + '/'
 
-    print('reading train and test user-item set ...')
+
     train_cf = read_cf(directory + 'train.txt')
     test_cf = read_cf(directory + 'test.txt')
     remap_item(train_cf, test_cf)
 
-    # print('construct Polluted training set')
+
     # generate_polluted_cf_data(train_cf, rate=0.2)
     # exit()
  
-    print('combinating train_cf and kg data ...')
+
     triplets,kg_dict = read_triplets(directory + 'kg_final.txt')
     static_kg(triplets)
     item_rel_mask = build_kg_set(triplets)
-    print(len(item_rel_mask))
 
-    print('building the graph ...')
     graph, relation_dict = build_graph(train_cf, triplets)
 
     ui_sparse_graph, all_sparse_graph = build_sparse_graph(relation_dict)  
