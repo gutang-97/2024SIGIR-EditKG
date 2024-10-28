@@ -23,7 +23,8 @@ from collections import Counter, defaultdict
 from utils.parser import parse_args
 from prettytable import PrettyTable
 from sklearn.metrics import accuracy_score
-from utils.Speed_data_loader_add_kg import load_data
+#from utils.Speed_data_loader_add_kg import load_data
+from utils.data_loader import load_data
 from sklearn.metrics.pairwise import cosine_similarity
 
 from modules.KGR_model import KGR
