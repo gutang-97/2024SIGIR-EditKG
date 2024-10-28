@@ -75,7 +75,6 @@ def _mulp_neg(triplet):
 def _get_KGC_neg_data(triplets,neg_times = 4):
     def negative_sampling(triplets):
         pool = multiprocessing.Pool(cores)
-        print("process neg items...")
         # neg_items = pool.map(get_neg_one, user_item.cpu().numpy()[:, 0])
         neg_triplets = list(tqdm(iterable=pool.imap(_mulp_neg,triplets.tolist()),total=len(triplets)))
         pool.close()
@@ -89,10 +88,8 @@ def _get_KGC_neg_data(triplets,neg_times = 4):
 
 def train_kgr_model(model,kgr_optimizer, triplets, kg_mask=[],epochs=2,threshold=0.5):
     # neg_kg_data = torch.LongTensor(neg_kg_data[index])
-    print("triplets: ",triplets.shape)
     if kg_mask!=[]:
         triplets = triplets[kg_mask.reshape(-1)!=0.]
-        print("triplets after mask: ",triplets.shape)
 
     kgr_batch = 1024
 
@@ -142,10 +139,7 @@ def train_kgr_model(model,kgr_optimizer, triplets, kg_mask=[],epochs=2,threshold
             kgr_optimizer.zero_grad()
             kgr_batch_loss.backward()
             kgr_optimizer.step()
-        print("epoch: ",epoch)
-        print("KGR model total loss: ",total_kg_loss)
 
-        print("evaluate model...")
         model.eval()
         pred_label = []
         true_label = []
@@ -160,19 +154,17 @@ def train_kgr_model(model,kgr_optimizer, triplets, kg_mask=[],epochs=2,threshold
             true_label.append(label)
             
         pred_label = np.concatenate(pred_label,axis=0)
-        print("pred_label: 1 shape:, ",pred_label[pred_label>0].shape)
         true_label = np.concatenate(true_label,axis=0)
         # pred_label_d = pred_label[pred_label>0]
         # true_label_d = true_label[pred_label>0]
         
         acc = accuracy_score(pred_label, true_label)
-        print("evaluate acc: ",acc)
+
         
 
 def _process_kg_attr(canditate_kg,tripltes,kg_mask=None):
     
     canditate_kg = np.unique(canditate_kg,axis=0)
-    print("new kg num items: ",np.unique(canditate_kg[:,0]).shape)
     if kg_mask!=None:
         tripltes = tripltes[kg_mask.reshape(-1)!=0]
         
@@ -183,10 +175,7 @@ def _process_kg_attr(canditate_kg,tripltes,kg_mask=None):
         if tirp[0] in attr_set:
             out_attr_kg.append(tirp)
     out_attr_kg = np.asarray(out_attr_kg)
-    print("canditate_kg: ",canditate_kg.shape)
-    print("out_attr_kg: ",out_attr_kg.shape)
     if out_attr_kg.shape[0] > 0:
-        print("out_attr_kg: ",out_attr_kg.shape)
         all_candi_kg = np.concatenate([canditate_kg,out_attr_kg],axis=0)
     else:
         all_candi_kg = canditate_kg
@@ -207,7 +196,6 @@ if __name__ == '__main__':
     """read args"""
     global args, device, train_user_set,kg_dict, item_lists_dict, ent_lists_dict
     args = parse_args()
-    print(args)
     device = torch.device("cuda:"+str(args.gpu_id)) if args.cuda else torch.device("cpu")
 
     """build dataset"""
@@ -242,7 +230,6 @@ if __name__ == '__main__':
     should_stop = False
     best_metric = {"recall":0, "ndcg":0, "precision":0, "hit_ratio":0}
     best_epoch  = {"recall":0, "ndcg":0, "precision":0, "hit_ratio":0}
-    print("start training ...")
     
     iter = math.ceil(len(train_cf_pairs) / args.batch_size)
     cl_batch = 512
@@ -258,7 +245,6 @@ if __name__ == '__main__':
             index = np.arange(len(train_cf))
             np.random.shuffle(index)
             train_cf_pairs = train_cf_pairs[index]
-            print("start prepare feed data...")
             all_feed_data = get_feed_data(train_cf_pairs, user_dict['train_user_set'])  # {'user': [n,], 'pos_item': [n,], 'neg_item': [n, n_sample]}
             all_feed_data['pos_index'] = torch.LongTensor(index)
 
@@ -291,13 +277,11 @@ if __name__ == '__main__':
             batch['pos_items'] = all_feed_data['pos_items'][i*args.batch_size:(i+1)*args.batch_size].to(device)
 
             batch_loss, batch_mmd_loss = model(batch)
-            print("batch loss: ",batch_loss.item())
             # batch_loss.backward() 
             loss_list  = [batch_mmd_loss, batch_loss]
             optimizer.pc_backward(loss_list)
             optimizer.step()
             loss += batch_loss.item()
-            print("epoch: ",epoch)
 
         # if epoch > 8:
         #     for param_group in optimizer.param_groups:
@@ -325,9 +309,6 @@ if __name__ == '__main__':
             [epoch, train_e_t - train_s_t, test_e_t - test_s_t, loss, ret['recall'], ret['ndcg'], ret['precision'], ret['hit_ratio']]
         )
         
-        print(train_res)
-        print("best metrics: ",best_metric)
-        print("best epochs:  ",best_epoch)
         f = open('./result/{}_exp_cxks_kg_xr_v2.txt'.format(args.dataset), 'a+')
         f.write(str(best_metric)+ '\n')
         f.write(str(best_epoch)+ '\n')
